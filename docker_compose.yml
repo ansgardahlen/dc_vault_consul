@@ -1,0 +1,52 @@
+version: '3.6'
+
+services:
+
+  vault:
+    build:
+      context: ./vault
+      dockerfile: Dockerfile
+    ports:
+      - "${VAULT_HTTP_BIND:-0.0.0.0}:${VAULT_HTTP_PORT:-8200}:${VAULT_HTTP_PORT:-8200}"
+    volumes:
+      - ./data/vault/config:/vault/config
+      - ./data/vault/policies:/vault/policies
+      - ./data/vault/data:/vault/data
+      - ./data/vault/logs:/vault/logs
+    environment:
+      - VAULT_ADDR=http://127.0.0.1:${VAULT_HTTP_PORT:-8200}
+      - VIRTUAL_HOST=${VAULT_PUBLIC_FQDN}
+      - VIRTUAL_PORT=${VAULT_HTTP_PORT:-8200}
+      - LETSENCRYPT_HOST=${VAULT_PUBLIC_FQDN}
+      - LETSENCRYPT_EMAIL=${ADMIN_MAIL}
+    command: server -config=/vault/config/vault-config.json
+    cap_add:
+      - IPC_LOCK
+    depends_on:
+      - consul
+
+  consul:
+    build:
+      context: ./consul
+      dockerfile: Dockerfile
+    ports:
+      - "${CONSUL_HTTP_BIND:-0.0.0.0}:${CONSUL_HTTP_PORT:-8500}:${CONSUL_HTTP_PORT:-8500}"
+    command: agent -server -bind 0.0.0.0 -client 0.0.0.0 -bootstrap-expect 1 -config-file=/consul/config/config.json
+    volumes:
+      - ./data/consul/config/consul-config.json:/consul/config/config.json
+      - ./data/consul/data:/consul/data
+    environment:
+      - VIRTUAL_HOST=${CONSUL_PUBLIC_FQDN}
+      - VIRTUAL_PORT=${CONSUL_HTTP_PORT:-8500}
+      - LETSENCRYPT_HOST=${CONSUL_PUBLIC_FQDN}
+      - LETSENCRYPT_EMAIL=${ADMIN_MAIL}
+
+  consul-worker:
+    build:
+      context: ./consul
+      dockerfile: Dockerfile
+    command: agent -server -join consul -config-file=/consul/config/config.json
+    volumes:
+      - ./data/consul/config/consul-config.json:/consul/config/config.json
+    depends_on:
+      - consul
