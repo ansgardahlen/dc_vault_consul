@@ -70,3 +70,55 @@ TZ=${TZ}
 # Fixed project name
 #COMPOSE_PROJECT_NAME=vault
 EOF
+
+mkdir -p ./data/vault/config/
+if [[ -f ./data/vault/config/vault-config.json ]]; then
+  read -r -p "config file vault-config.json exists and will be overwritten, are you sure you want to contine? [y/N] " response
+  case $response in
+    [yY][eE][sS]|[yY])
+      mv ./data/vault/config/vault-config.json ./data/vault/config/vault-config.json_backup
+      ;;
+    *)
+      exit 1
+    ;;
+  esac
+fi
+cat << EOF > ./data/vault/config/vault-config.json
+{
+  "backend": {
+    "consul": {
+      "address": "consul:8500",
+      "path": "vault/"
+    }
+  },
+  "listener": {
+    "tcp":{
+      "address": "0.0.0.0:8200",
+      "tls_disable": 1
+    }
+  },
+  "ui": true
+}
+EOF
+
+mkdir -p ./data/vault/policies/
+if [[ -f ./data/vault/policies/app-policy.json ]]; then
+  read -r -p "config file app-policy.json exists and will be overwritten, are you sure you want to contine? [y/N] " response
+  case $response in
+    [yY][eE][sS]|[yY])
+      mv ./data/vault/policies/app-policy.json ./data/vault/policies/app-policy.json_backup
+      ;;
+    *)
+      exit 1
+    ;;
+  esac
+fi
+cat << EOF > ./data/vault/policies/app-policy.json
+{
+  "path": {
+    "secret/data/app/*": {
+      "policy": "read"
+    }
+  }
+}
+EOF
